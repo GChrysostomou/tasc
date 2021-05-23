@@ -1,6 +1,6 @@
 ## TaSc
 
-Repository for the paper *"Improving Attention Interpretability with Task-specific Information in Text Classification", G.Chrysostomou and N.Aletras, to appear at ACL2021*.
+Repository for the paper *"Improving Attention Interpretability with Task-specific Information in Text Classification", G.Chrysostomou and N.Aletras, to appear at ACL2021*. Pre-print available at this [link](https://arxiv.org/pdf/2105.02657.pdf)
 
 ## Prerequisites
 
