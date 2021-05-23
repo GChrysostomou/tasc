@@ -30,21 +30,24 @@ You can train and save the models with [train_eval_bc.py](https://github.com/GCh
 
 Example script (without TaSc):
 
-```python train_eval_bc.py     -dataset sst 
-				-encoder lstm 
-				-mechanism dot 
-				-data_dir data/ 
-				-model_dir models/ 
+``` 
+python train_eval_bc.py -dataset sst 
+			-encoder lstm 
+			-mechanism dot 
+			-data_dir data/ 
+			-model_dir models/ 
 ```
 
 Example script (with Lin-TaSc):
 
-```python train_eval_bc.py     -dataset sst 
-				-encoder lstm 
-				-mechanism dot 
-				-data_dir data/ 
-				-model_dir models/ 
-				-lin
+```
+
+python train_eval_bc.py -dataset sst 
+			-encoder lstm 
+			-mechanism dot 
+			-data_dir data/ 
+			-model_dir models/ 
+			-lin
 ```
 
 ## Summarising results
@@ -59,5 +62,5 @@ The script can be run with the following options:
 * mechanisms: *selection of attention mechanism with options {Tanh, Dot}*
 * tasc_ver : *tasc version with options {lin, feat, conv}*
 
-To generate radar plots you can run ```python [produce_graphs.py](https://github.com/GChrysostomou/tasc/blob/master/produce_graphs.py)```.
+To generate radar plots you can run ```python produce_graphs.py```([produce_graphs.py](https://github.com/GChrysostomou/tasc/blob/master/produce_graphs.py)).
 
