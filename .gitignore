@@ -1,0 +1,9 @@
+data/*/*.p
+data/*/*.csv
+.ipynb_checkpoints
+__pycache__
+*/__pycache__
+*/*/__pycache__
+*/*/*/__pycache__
+.vscode
+
