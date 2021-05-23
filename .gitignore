@@ -1,5 +1,5 @@
-data/*/*.p
-data/*/*.csv
+tasks/*/*.p
+tasks/*/*.csv
 .ipynb_checkpoints
 __pycache__
 */__pycache__
