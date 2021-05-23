@@ -13,6 +13,9 @@ pip install -r pip_reqs.txt
 python -m spacy download en
 ```
 
+## Downloading Task Data
+You can run the jupyter notebooks found under tasks/*task_name*/\*ipynb to generate a filtered, processed *csv* file and a pickle file used for trainining the models.
+
 ## Training and Evaluating the models
 
 You can train and save the models with [train_eval_bc.py](https://github.com/GChrysostomou/tasc/blob/master/train_eval_bc.py) script with the following options:
