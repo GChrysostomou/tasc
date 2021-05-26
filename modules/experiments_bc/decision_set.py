@@ -116,14 +116,31 @@ def percentage_removed(data, model, save_path):
             temp = 0
             
             model.eval()
-           
+
+            maximum = max(lengths)
+            increments =  torch.round(maximum.float() * 0.02).int()
+            
+            ## to speed up experiments if you want
+            if args["speed_up"]:
+            
+                increments = max(1,increments)
+
+            else:
+
+                increments = 1
+
+
+            lengths_ref = lengths.clone()
+            
             maximum = max(lengths)
             
             lengths_ref = lengths.clone()
             
             rows = torch.arange(sentences.size(0)).long().to(device)
 
-            for _j_ in range(0,maximum):
+            original_sentences = sentences.clone().detach()
+
+            for _j_ in range(0,maximum, increments):
                 
                 """Attention at source"""
                 

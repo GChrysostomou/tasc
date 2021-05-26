@@ -35,6 +35,8 @@ parser.add_argument('-operation',  type = str, help='operation over scaled embed
 parser.add_argument('-lin', help='use lin-tasc', action='store_true')
 parser.add_argument('-feat', help='use feat-tasc', action='store_true')
 parser.add_argument('-conv', help='use conv-tasc', action='store_true')
+parser.add_argument('--speed_up', help='can be used to speed up decision flip experiments as mentioned in README', action='store_true')
+
 
 print("\n", vars(parser.parse_args()), "\n")
 
@@ -122,15 +124,25 @@ with open('modules/config.txt', 'w') as file:
 
 ### training and evaluating models
 
-from modules.run_binary_classification import *
+from modules.run_binary_classification import train_binary_classification_model, evaluate_trained_bc_model, conduct_experiments
+import os 
 
-print("\nTraining\n")
+fname = args["save_path"] + args["encoder"] + "_" + args["mechanism"] + "_predictive_performances.csv"
 
-train_binary_classification_model(data)
-     
-print("\Evaluating\n")
+if os.path.isfile(fname): 
 
-evaluate_trained_bc_model(data)
+  print(" **** model already exists at {}".format(
+    fname
+  ))
+
+else:
+  print("\nTraining\n")
+
+  train_binary_classification_model(data)
+      
+  print("\Evaluating\n")
+
+  evaluate_trained_bc_model(data)
 
 
 ### conducting experiments
