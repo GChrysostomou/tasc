@@ -67,22 +67,22 @@ def capture_all_fraction(results_dir = str, datasets = list(), encoders = list()
     
     return pd.DataFrame(all_results)
 
+
 def capture_all_flip(results_dir = str, datasets = list(), encoders = list(), tasc_approach = list(), mechanisms = list()):
-    
-    
+
     tasc_mapper = {
         "" : "baseline",
         "lin_" : "lin",
         "feat_" : "feat",
         "conv_" : "conv"
     }
-    
-    
+
+
     cwd = os.getcwd()
 
     all_results = []
 
-    
+
     for dataset in datasets:
         for encoder in encoders:
             for tasc_ in tasc_approach:
@@ -92,6 +92,10 @@ def capture_all_flip(results_dir = str, datasets = list(), encoders = list(), ta
                     file_name = encoder + "_" + mechanism + "Attention_decision-flip-single-summary.csv"
 
                     results = pd.read_csv(path + file_name)
+
+                    if "True" not in results.columns:
+
+                        results["True"] = 0.
 
                     collect = {
                                 "dataset" : dataset,
@@ -105,7 +109,8 @@ def capture_all_flip(results_dir = str, datasets = list(), encoders = list(), ta
                             }
 
                     all_results.append(collect)
-    
+
+
     return pd.DataFrame(all_results)
 
 
@@ -172,7 +177,8 @@ def plot_radars(graph_loc = "decision-flip-set/", results = pd.DataFrame(), plot
             layout=go.Layout(
                 title=go.layout.Title(text=method),
                 polar={'radialaxis': {'visible': True}},
-                showlegend=True
+                showlegend=True,
+                font = {"size": 20}
             )
         )
 
@@ -204,7 +210,7 @@ if __name__ == "__main__":
         mechanisms = mechanisms
     )
     
-    ## plot per dataset 
+    ## plot per encoder 
     
     filt = all_res[["dataset", "encoder", "method", "mechanism", "attention" ,  "gradOfatt",  "attention*gradients"]]
     
@@ -232,7 +238,7 @@ if __name__ == "__main__":
         mechanisms = mechanisms
     )
     
-    ## plot per dataset 
+    ## plot per encoder 
     
     filt = all_res[["dataset", "encoder", "method", "mechanism", "attention" ,  "gradOfatt",  "attention*gradients"]]
     
