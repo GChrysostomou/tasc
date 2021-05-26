@@ -30,7 +30,7 @@ You can train and save the models with [train_eval_bc.py](https://github.com/GCh
 * lin : *apply Lin-TaSc*
 * feat : *apply Feat-TaSc*
 * conv : *apply Conv-TaSc*
-* speed_up : unlike the results of the paper, you can use this option to speed up the *fraction of token* experiments by searching every 2% of the sequence instead of every token, with results being similar.
+* speed_up : In case of low resource scenarios, you can use this option to speed up the *fraction of token* experiments by searching every 2% of the sequence instead of every token, with results being similar (almost identical) to those of the paper.
 
 Example script (without TaSc):
 
