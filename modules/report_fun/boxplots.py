@@ -1,18 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-# In[5]:
-
-
-# import pandas
 import pandas as pd
-# import matplotlib
 import matplotlib.pyplot as plt
-# import seaborn
 import seaborn as sns
-
+import numpy as np
 import glob
-
+import matplotlib
 import os
 
 
@@ -32,13 +25,11 @@ def plot(results_directory, dataset, encoder, mechanism, tasc_approach):
     datasets = glob.glob(results_directory + dataset + "/"+ encoder + "*" +mechanism +"*decision-flip-set.csv")
     df = pd.read_csv(datasets[0])
     
-    df = df[["max_source","att_grad", "att*grad"]]
+    df = df[["attention", "attention gradients", "scaled attention"]]
    
     datasets = glob.glob(results_directory + "/" + tasc_approach + "_" + dataset + "/"+ encoder + "*" +mechanism +"*decision-flip-set.csv")
     
-    df2 = pd.read_csv(datasets[0])[["max_source", "att_grad", "att*grad"]]
-
-    import matplotlib
+    df2 = pd.read_csv(datasets[0])[["attention", "attention gradients", "scaled attention"]]
 
     matplotlib.rc('xtick', labelsize=40)     
     matplotlib.rc('ytick', labelsize=30)
@@ -46,13 +37,13 @@ def plot(results_directory, dataset, encoder, mechanism, tasc_approach):
 
     df["extension"] = mechanism
     df2["extension"] = mechanism + "+"
-    import numpy as np
+   
     df = df.replace(np.nan, 0)
     df2 = df2.replace(np.nan, 0)
 
     both = pd.concat([df, df2], 0)
 
-    mapper = {"max_source":"α","att_grad":"∇α", "att*grad":"α∇α"}
+    mapper = {"attention":"α","attention gradients":"∇α", "scaled attention":"α∇α"}
     
     
     both = both.rename(mapper, axis= 1)

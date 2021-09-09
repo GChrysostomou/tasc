@@ -6,12 +6,6 @@ import glob
 import pandas as pd
 import os
 
-# datasets = ["agnews"]#["sst","twitter", "imdb", "agnews", "mimicanemia"]
-# encoders = ["bert", "lstm", "gru", "mlp", "cnn"]
-# mechanisms = ["Tanh", "Dot"]
-# tasc_approach = "lin"
-
-
 def comparison(results_dir, datasets, encoders, mechanisms, tasc_approach):
 
     save_dir = "summarised_results/" + tasc_approach + "-tasc_comparing_explanations/"
@@ -51,13 +45,13 @@ def comparison(results_dir, datasets, encoders, mechanisms, tasc_approach):
 
                 mech_temp[mechanism] = {}
 
-                mech_temp[mechanism]["Attn*Attn_Grad +"] = round(tasc["att*grad"],2)
+                mech_temp[mechanism]["Attn*Attn_Grad +"] = round(tasc["scaled attention"],2)
 
                 mech_temp[mechanism]["omission"] = round(nontasc["omission"],2)
 
-                mech_temp[mechanism]["grad"] = round(nontasc["grad"],2)
+                mech_temp[mechanism]["grad"] = round(nontasc["gradients"],2)
 
-                mech_temp[mechanism]["IG"] = round(nontasc["IG"],2)
+                mech_temp[mechanism]["IG"] = round(nontasc["ig"],2)
 
 
 

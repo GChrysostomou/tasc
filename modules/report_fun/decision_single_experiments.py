@@ -60,14 +60,14 @@ def return_full_table(results_dir , datasets,  encoders , mechanisms, tasc_appro
                 mech_temp[mechanism] = {}
                 
 
-                mech_temp[mechanism]["attn"] = round(nontasc["max_source"],1)
-                mech_temp[mechanism]["attn_grad"] = round(nontasc["att_grad"],1)
-                mech_temp[mechanism]["attn_gradattn"] = round(nontasc["att*grad"],1)
+                mech_temp[mechanism]["attn"] = round(nontasc["attention"],1)
+                mech_temp[mechanism]["attn_grad"] = round(nontasc["attention gradients"],1)
+                mech_temp[mechanism]["attn_gradattn"] = round(nontasc["scaled attention"],1)
 
 
-                mech_temp[mechanism]["attn +"] = round(tasc["max_source"],1)
-                mech_temp[mechanism]["attn_grad +"] = round(tasc["att_grad"],1)
-                mech_temp[mechanism]["attn_gradattn +"] = round(tasc["att*grad"],1)
+                mech_temp[mechanism]["attn +"] = round(tasc["attention"],1)
+                mech_temp[mechanism]["attn_grad +"] = round(tasc["attention gradients"],1)
+                mech_temp[mechanism]["attn_gradattn +"] = round(tasc["scaled attention"],1)
                 
                 
                 
@@ -77,7 +77,7 @@ def return_full_table(results_dir , datasets,  encoders , mechanisms, tasc_appro
 
                     mech_temp[mechanism][max_key] = r"\textbf{" + str(mech_temp[mechanism][max_key])                + r"}"
 
-                    if tasc["max_source"] > nontasc["max_source"]:
+                    if tasc["attention"] > nontasc["attention"]:
 
                         try:
 
@@ -85,7 +85,7 @@ def return_full_table(results_dir , datasets,  encoders , mechanisms, tasc_appro
                         except:
                             mech_temp[mechanism]["attn +"] = r"\underline{" + mech_temp[mechanism]["attn +"]                         + r"}"
 
-                    if tasc["att_grad"] > nontasc["att_grad"]:
+                    if tasc["attention gradients"] > nontasc["attention gradients"]:
                         try:
 
                             mech_temp[mechanism]["attn_grad +"] = r"\underline{" + str(mech_temp[mechanism]["attn_grad +"])                          + r"}"
@@ -94,7 +94,7 @@ def return_full_table(results_dir , datasets,  encoders , mechanisms, tasc_appro
 
                             mech_temp[mechanism]["attn_grad +"] = r"\underline{" + mech_temp[mechanism]["attn_grad +"]                          + r"}"
 
-                    if tasc["att*grad"] > nontasc["att*grad"]:
+                    if tasc["scaled attention"] > nontasc["scaled attention"]:
 
                         try:
                             mech_temp[mechanism]["attn_gradattn +"] = r"\underline{" + str(mech_temp[mechanism]["attn_gradattn +"])                         + r"}"

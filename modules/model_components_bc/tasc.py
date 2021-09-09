@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-TaSc variants
-"""
-
 import torch
 from torch import nn
 import math 

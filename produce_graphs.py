@@ -40,10 +40,10 @@ def capture_all_fraction(results_dir = str, datasets = list(), encoders = list()
                         "encoder": encoder,
                         "method": tasc_mapper[tasc_],
                         "mechanism": mechanism,
-                        "attention" : results[results["Unnamed: 0"] == "max_source"]["mean percentage"].values[0],
+                        "attention" : results[results["Unnamed: 0"] == "attention"]["mean percentage"].values[0],
                         "random" :  results[results["Unnamed: 0"] == "random"]["mean percentage"].values[0],
-                        "gradOfatt" :  results[results["Unnamed: 0"] == "att_grad"]["mean percentage"].values[0],
-                        "attention*gradients" :  results[results["Unnamed: 0"] == "att*grad"]["mean percentage"].values[0]
+                        "gradOfatt" :  results[results["Unnamed: 0"] == "attention gradients"]["mean percentage"].values[0],
+                        "attention*gradients" :  results[results["Unnamed: 0"] == "scaled attention"]["mean percentage"].values[0]
                     }
 
                     if tasc_ == "lin_" or tasc_ == "":
@@ -52,7 +52,7 @@ def capture_all_fraction(results_dir = str, datasets = list(), encoders = list()
 
                             collect["gradients"] = results[results["Unnamed: 0"] == "grad"]["mean percentage"].values[0]
                             collect["omission"] = results[results["Unnamed: 0"] == "omission"]["mean percentage"].values[0]
-                            collect["IG"] = results[results["Unnamed: 0"] == "IG"]["mean percentage"].values[0]
+                            collect["ig"] = results[results["Unnamed: 0"] == "ig"]["mean percentage"].values[0]
 
                         except:
 
@@ -102,10 +102,10 @@ def capture_all_flip(results_dir = str, datasets = list(), encoders = list(), ta
                                 "encoder": encoder,
                                 "method": tasc_mapper[tasc_],
                                 "mechanism": mechanism,
-                                "attention" : results[results["Unnamed: 0"] == "max_source"]["True"].values[0],
+                                "attention" : results[results["Unnamed: 0"] == "attention"]["True"].values[0],
                                 "random" :  results[results["Unnamed: 0"] == "random_source"]["True"].values[0],
-                                "gradOfatt" :  results[results["Unnamed: 0"] == "att_grad"]["True"].values[0],
-                                "attention*gradients" :  results[results["Unnamed: 0"] == "att*grad"]["True"].values[0]
+                                "gradOfatt" :  results[results["Unnamed: 0"] == "attention gradients"]["True"].values[0],
+                                "attention*gradients" :  results[results["Unnamed: 0"] == "scaled attention"]["True"].values[0]
                             }
 
                     all_results.append(collect)
@@ -182,9 +182,6 @@ def plot_radars(graph_loc = "decision-flip-set/", results = pd.DataFrame(), plot
             )
         )
 
-#         fig.show()
-
-
         plt.tight_layout()
         fig.write_image(path + method + "_per_encoder.pdf")
         
@@ -193,7 +190,7 @@ def plot_radars(graph_loc = "decision-flip-set/", results = pd.DataFrame(), plot
 if __name__ == "__main__":
     
     
-    results_dir = "final_results/test_experiment_results/"
+    results_dir = "dev_test_exp/"
     encoders = ["bert", "lstm", "gru","mlp", "cnn"]
     datasets = ["mimicanemia", "imdb", "sst", "twitter", "agnews"]
     tasc_approach = ["", "lin_", "feat_", "conv_"]

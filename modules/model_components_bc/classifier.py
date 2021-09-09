@@ -70,9 +70,6 @@ class Model(nn.Module):
  
         yhat = self.output(last_layer.squeeze(0))
 
-        yhat = torch.softmax(yhat, dim = -1)
-            
-        
         return yhat.to(device), self.weights
 
     def get_omission_scores(self, input, lengths, predicted):
@@ -158,7 +155,9 @@ def train(model, training, development, loss_function, optimiser, run,epochs = 1
     for epoch in trange(epochs, desc = "run {}:".format(run+1), maxinterval = 0.1):
 
         total_loss = 0
-        
+
+        model.train()
+
         for sentences, lengths, labels in training:
             
             model.zero_grad()
@@ -197,7 +196,7 @@ def train(model, training, development, loss_function, optimiser, run,epochs = 1
                                     round(dev_results["macro avg"]["f1-score"], 3),
                                     round(dev_loss, 2))
 
-        print(results_for_run)
+        # print(results_for_run)
         
         if save_folder is not None:
             

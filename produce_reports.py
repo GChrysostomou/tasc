@@ -4,7 +4,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-datasets", nargs='+',help = "select dataset / task", default = ["sst"])
+parser.add_argument("-datasets", nargs='+',help = "select dataset / task", default = ["sst", "twitter", "agnews", "imdb", "mimicanemia"])
 parser.add_argument("-encoders", nargs='+', help = "select encoder", default = ["bert", "lstm", "gru", "mlp", "cnn"])
 parser.add_argument("-experiments_dir", type = str, help = "where to load results from", default = "test_experiment_results/")
 parser.add_argument("-mechanisms", type = str, help = "choose mechanism", default = ["Tanh", "Dot"], choices = ["Tanh", "Dot"] )
