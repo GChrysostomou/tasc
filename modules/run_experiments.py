@@ -1,6 +1,7 @@
 import modules.experiments_bc.decision_single as eoo
 import modules.experiments_bc.decision_set as perc
 import modules.experiments_bc.set_tp as dmp
+import modules.experiments_bc.suff_comp as aopc
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -28,9 +29,11 @@ class evaluate:
         Removing the most informative token
         """
         
-        eoo.effect_on_output(self.testing, 
-                   self.classifier, 
-                   save_path = self.save_dir)
+        eoo.effect_on_output(
+            self.testing, 
+            self.classifier, 
+            save_path = self.save_dir
+        )
         
         
     def decision_flip_set(self):
@@ -39,10 +42,23 @@ class evaluate:
         Recording the fraction of tokens required to cause a decision flip
         """
         
-        perc.percentage_removed(self.testing, 
-                   self.classifier, 
-                   save_path = self.save_dir)
+        perc.percentage_removed(
+            self.testing, 
+            self.classifier, 
+            save_path = self.save_dir
+        )
         
+    def aopc_(self):
+        
+        """
+        Recording the fraction of tokens required to cause a decision flip
+        """
+        
+        aopc.conduct_tests_(
+            self.testing, 
+            self.classifier, 
+            save_path = self.save_dir
+        )
 
     def correct_classified_set(self, data_size, largest = True):
         """

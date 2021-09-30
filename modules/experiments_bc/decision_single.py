@@ -24,7 +24,7 @@ def effect_on_output(data, model, save_path):
     
     pbar = trange(
         len(data) * data.batch_size, 
-        desc=f"running experiments for fraction of tokens on test", 
+        desc=f"running experiments for fraction of tokens (SINGLE TOKEN) on test", 
         leave=True
     )
     

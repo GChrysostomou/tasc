@@ -342,14 +342,17 @@ def conduct_experiments(data):
     
     model.to(device)
     
-    evaluation = evaluate(classifier = model, 
-                      loss_function = nn.CrossEntropyLoss(),
-                      data = [args["dataset"], data],
-                      save_path = args["experiments_path"]
-                      )
+    evaluation = evaluate(
+        classifier = model, 
+        loss_function = nn.CrossEntropyLoss(),
+        data = [args["dataset"], data],
+        save_path = args["experiments_path"]
+    )
     
-    evaluation.decision_flip_single()
+    evaluation.aopc_()
+
+    # evaluation.decision_flip_single()
         
-    evaluation.decision_flip_set()
+    # evaluation.decision_flip_set()
         
     torch.cuda.empty_cache()

@@ -320,3 +320,140 @@ class dataholder_bert():
         
         self.testing = DataLoader(test_prebatch, batch_size = self.batch_size, 
                                shuffle = False, pin_memory = False)
+
+
+"""
+Faithfulness metrics
+"""
+
+def sufficiency_(full_text_probs : np.array, reduced_probs : np.array) -> np.array:
+
+    sufficiency = 1 - np.maximum(0, full_text_probs - reduced_probs)
+
+    return sufficiency
+
+def normalized_sufficiency_(model, original_sentences : torch.tensor, rationale_mask : torch.tensor, 
+                            inputs : dict, full_text_probs : np.array, full_text_class : np.array, rows : np.array, 
+                            suff_y_zero : np.array) -> np.array:
+
+    ## for sufficiency we always keep the rationale
+    ## since ones represent rationale tokens
+    ## preserve cls
+    rationale_mask[:,0] = 1
+    ## preserve sep
+    rationale_mask[torch.arange(rationale_mask.size(0)).to(device), inputs["lengths"]-1] = 1
+
+    inputs["input"]  =  rationale_mask * original_sentences
+
+    yhat, _  = model(**inputs)
+
+    yhat = torch.softmax(yhat.detach().cpu(), dim = -1).numpy()
+
+    reduced_probs = yhat[rows, full_text_class]
+
+    ## reduced input sufficiency
+    suff_y_a = sufficiency_(full_text_probs, reduced_probs)
+
+    # return suff_y_a
+    suff_y_zero -= 1e-4 ## to avoid nan
+
+    norm_suff = np.maximum(0, (suff_y_a - suff_y_zero) / (1 - suff_y_zero))
+
+    norm_suff = np.clip( norm_suff, a_min = 0, a_max = 1)
+
+    return norm_suff, reduced_probs
+
+def comprehensiveness_(full_text_probs : np.array, reduced_probs : np.array) -> np.array:
+
+    comprehensiveness = np.maximum(0, full_text_probs - reduced_probs)
+
+    return comprehensiveness
+
+def normalized_comprehensiveness_(model, original_sentences : torch.tensor, rationale_mask : torch.tensor, 
+                                  inputs : dict, full_text_probs : np.array, full_text_class : np.array, rows : np.array, 
+                                  suff_y_zero : np.array) -> np.array:
+    
+    ## for comprehensivness we always remove the rationale and keep the rest of the input
+    ## since ones represent rationale tokens, invert them and multiply the original input
+    rationale_mask = (rationale_mask == 0).int()
+    
+    inputs["input"] =  original_sentences * rationale_mask.long()
+    
+    yhat, _  = model(**inputs)
+
+    yhat = torch.softmax(yhat, dim = -1).detach().cpu().numpy()
+
+    reduced_probs = yhat[rows, full_text_class]
+
+     ## reduced input sufficiency
+    comp_y_a = comprehensiveness_(full_text_probs, reduced_probs)
+    comp_y_a = np.nan_to_num(comp_y_a, nan=1.)
+    # return comp_y_a
+    suff_y_zero -= 1e-4 # to avoid nan
+
+    ## 1 - suff_y_0 == comp_y_1
+    norm_comp = np.maximum(0, comp_y_a / (1 - suff_y_zero))
+
+    norm_comp = np.clip(norm_comp, a_min = 0, a_max = 1)
+
+    return norm_comp, yhat
+
+
+"""MASK FUNCTIONS"""
+
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+def create_rationale_mask_(
+        importance_scores = torch.tensor, 
+        no_of_masked_tokens = np.ndarray,
+        method = "topk", batch_input_ids = None
+    ):
+
+    rationale_mask = []
+
+    for _i_ in range(importance_scores.size(0)):
+        
+        score = importance_scores[_i_]
+        tokens_to_mask = int(no_of_masked_tokens[_i_])
+        
+        ## if contigious or not a unigram (unigram == topk of 1)
+        if method == "contigious" and tokens_to_mask > 1:
+
+            top_k = contigious_(
+                importance_scores = score,
+                tokens_to_mask = tokens_to_mask
+            )
+        
+        else:
+
+            top_k = topk_(
+                importance_scores = score,
+                tokens_to_mask = tokens_to_mask
+            )
+
+        ## create the instance specific mask
+        ## 1 represents the rationale :)
+        ## 0 represents tokens that we dont care about :'(
+        mask = torch.zeros(score.shape).to(device)
+        mask = mask.scatter_(-1,  top_k.to(device), 1).long()
+
+        rationale_mask.append(mask)
+
+    rationale_mask = torch.stack(rationale_mask).to(device)
+
+    return rationale_mask
+
+def contigious_(importance_scores, tokens_to_mask):
+
+    ngram = torch.stack([importance_scores[i:i + tokens_to_mask] for i in range(len(importance_scores) - tokens_to_mask + 1)])
+    indxs = [torch.arange(i, i+tokens_to_mask) for i in range(len(importance_scores) - tokens_to_mask + 1)]
+    top_k = indxs[ngram.sum(-1).argmax()]
+
+    return top_k
+
+def topk_(importance_scores, tokens_to_mask):
+
+    top_k = torch.topk(importance_scores, tokens_to_mask).indices
+
+    return top_k

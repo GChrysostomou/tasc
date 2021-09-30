@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -25,8 +22,8 @@ torch.backends.cudnn.benchmark = False
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-dataset", type = str, help = "select dataset / task", default = "sst")
-parser.add_argument("-encoder", type = str, help = "select encoder", default = "lstm", choices = ["lstm", "gru", "mlp", "cnn", "bert"])
-parser.add_argument("-data_dir", type = str, help = "directory of saved processed data", default = "data/")
+parser.add_argument("-encoder", type = str, help = "select encoder", default = "mlp", choices = ["lstm", "gru", "mlp", "cnn", "bert"])
+parser.add_argument("-data_dir", type = str, help = "directory of saved processed data", default = "tasks/")
 parser.add_argument("-model_dir", type = str, help = "directory to save models", default = "test_models/")
 parser.add_argument("-experiments_dir", type = str, help = "directory to save models", default = "test_experiment_results/")
 parser.add_argument("-mechanism", type = str, help = "choose mechanism", default = "tanh", choices = ["tanh", "dot"] )
@@ -87,8 +84,6 @@ else:
     
     data = dataholder(data_dir, dataset, 32)
 
-# In[18]:
-
 
 vocab_size = data.vocab_size
 embedding_dim = data.embedding_dim
@@ -136,6 +131,7 @@ if os.path.isfile(fname):
   ))
 
 else:
+
   print("\nTraining\n")
 
   train_binary_classification_model(data)
