@@ -1,6 +1,6 @@
 ## TaSc
 
-Repository for the paper "Improving Attention Interpretability with Task-specific Information in Text Classification" published at ACL 2021 available at : ["Improving Attention Interpretability with Task-specific Information in Text Classification"](https://aclanthology.org/2021.acl-long.40/)
+Repository for the paper  ["Improving Attention Interpretability with Task-specific Information in Text Classification"](https://aclanthology.org/2021.acl-long.40/) published at ACL 2021.
 
 
 
@@ -10,17 +10,14 @@ Repository for the paper "Improving Attention Interpretability with Task-specifi
 
 Install necessary packages by using the files  [conda_reqs.txt](https://github.com/GChrysostomou/eacl_tasc/blob/master/conda_reqs.txt) and  [pip_reqs.txt](https://github.com/GChrysostomou/eacl_tasc/blob/master/pip_reqs.txt)  
 
-\```
-
+```
 conda create --name tasc --file  conda_reqs.txt
-
 conda activate tasc
-
 pip install -r pip_reqs.txt
-
 python -m spacy download en
+```
 
-\```
+
 
 ## Training and Evaluating the models
 
@@ -98,5 +95,4 @@ Please cite:
 	pages = "477--488"
 }
 ```
-
 
