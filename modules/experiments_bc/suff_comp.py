@@ -1,15 +1,14 @@
 import torch
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from torch.autograd import Variable
-import pandas as pd
 from modules.experiments_bc.eval_utils import * 
-from collections import OrderedDict
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 from tqdm import trange
 import json
-from modules.utils import normalized_comprehensiveness_, normalized_sufficiency_, sufficiency_, create_rationale_mask_
+from modules.utils import normalized_comprehensiveness_, normalized_sufficiency_, sufficiency_, create_rationale_mask_, batch_from_dict_
+import gc
+import os
 
 with open('modules/config.txt', 'r') as f:
     args = json.load(f)
@@ -22,19 +21,45 @@ def conduct_tests_(data, model, save_path):
     
     faithfulness_results = {}
 
-    if args["encoder"] == "bert":
-        model.encoder.bert.embeddings.requires_grad_(True)
-
-    else:
-        model.encoder.embedding.weight.requires_grad_(True)
-
     counter = 0
 
-    for sentences, lengths, labels in data:
+    ## import importance_scores
+    fname = os.path.join(
+        os.getcwd(), 
+        "importance_scores", 
+        save_path.split('/')[-2],
+        ""
+    )
+
+    if os.path.exists(fname + f"{save_path.split('/')[-1]}-importance_scores.npy"):
+
+        print(f"** Importance scores already extracted in -->> {fname}")
+        
+        importance_scores = np.load(
+            fname + f"{save_path.split('/')[-1]}-importance_scores.npy",
+            allow_pickle = True
+        ).item()
+
+    else:
+
+        raise FileNotFoundError(
+            """
+            Please run the function to retrieve importance scores
+            """
+        )
+
+    ## check if descriptors already exist
+    fname = save_path + "-faithfulness-scores-averages--description.json"
+
+    if os.path.exists(fname):
+
+        print("**** results already exist. Delete if you want a rerun")
+        return
+
+    for inst_idx, sentences, lengths, labels in data:
         
         torch.cuda.empty_cache()
         model.zero_grad()
-        model.eval()
 
         if args["encoder"] == "bert":
             
@@ -55,76 +80,39 @@ def conduct_tests_(data, model, save_path):
             counter+=1
             index_list.append(index)
 
-        original_prediction, weights_or = model(
+        original_prediction, _ = model(
             sentences, 
             lengths, 
             retain_gradient = True
         )
 
-        original_prediction.max(-1)[0].sum().backward(retain_graph = True)
-
-        g = model.encoder.embed.grad
-
-        em = model.encoder.embed
-
-        g1 = (g* em).sum(-1)[:,:max(lengths)]
-
-        integrated_grads = model.integrated_grads(
-            sentences, 
-            g, 
-            lengths, 
-            original_pred = original_prediction.max(-1)
-        )
-         
-        weights_def_grad = model.weights.grad
-
-        random = torch.randn(weights_or.shape)
-
-        g1.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))
-
-
-        omission_scores = model.get_omission_scores(
-            sentences, 
-            lengths, 
-            original_prediction
-        )
-
-        integrated_grads.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))
-
-        weight_mul_grad = weights_or * weights_def_grad
-        
-        weights_def_grad.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))      
-        
-        weight_mul_grad.masked_fill_(model.masks[:,:max(lengths)].bool(),float("-inf"))
-
-        random.masked_fill_(model.masks[:,:max(lengths)].bool(),float("-inf"))
-
-
         original_sentences = sentences.clone().detach()[:,:max(lengths)]
 
         model.eval()
 
-
-        """"""
-
-        original_prediction = torch.softmax(original_prediction, dim = -1).detach().cpu().numpy()
+        original_prediction = torch.softmax(original_prediction, dim = -1).cpu().detach().numpy()
         full_text_class = original_prediction.argmax(-1)
         full_text_probs = original_prediction.max(-1)
 
-        sentences = original_sentences* torch.zeros_like(original_sentences).to(device)
-
         yhat, _  = model(
             original_sentences, 
-            lengths,
-            retain_gradient = True,
-            ig = 0.
+            lengths, 
+            retain_gradient = False,  
+            ig = 1e-16 
         )
 
-        yhat = torch.softmax(yhat, dim = -1).detach().cpu().numpy()
+        yhat = torch.softmax(yhat, dim = -1).cpu().detach().numpy()
 
-        rows = torch.arange(sentences.size(0)).long().to(device)
+        rows = torch.arange(sentences.size(0)).long().cpu().numpy()
 
-        reduced_probs = yhat[rows, full_text_class]
+        if len(rows) == 1:
+
+            rows = rows[0]
+            reduced_probs = [yhat[full_text_class]]
+
+        else:
+
+            reduced_probs = yhat[rows, full_text_class]
 
         ## baseline sufficiency
         suff_y_zero = sufficiency_(
@@ -133,7 +121,7 @@ def conduct_tests_(data, model, save_path):
         )
 
         ## AOPC scores and other metrics
-        rationale_ratios = [0.05, 0.1, 0.2, 0.5]
+        rationale_ratios = [0.02, 0.1, 0.2, 0.5]
 
         for rationale_type in {"topk"}:
 
@@ -142,12 +130,14 @@ def conduct_tests_(data, model, save_path):
                 faithfulness_results[annot_id]["full text prediction"] = original_prediction[_j_] 
                 faithfulness_results[annot_id]["true label"] = labels[_j_].detach().cpu().item()
             
-            for feat_name, feat_score in {"random" : random, "attention" : weights_or, "gradients" : g1, 
-                                            "ig" : integrated_grads, "omission" : omission_scores , 
-                                            "scaled attention" : weight_mul_grad, "attention gradients" : weights_def_grad}.items():
+            for feat_name in {"random" , "attention", "gradients" , "ig" , 
+                             "scaled attention" , "attention gradients"}:
 
-            # for feat_name, feat_score in {"gradients" : g1, 
-            #                                 "ig" : integrated_grads}.items():
+                feat_score =  batch_from_dict_(
+                    inst_indx = inst_idx, 
+                    metadata = importance_scores, 
+                    target_key = feat_name,
+                )
 
                 suff_aopc = np.zeros([yhat.shape[0], len(rationale_ratios)], dtype=np.float64)
                 comp_aopc = np.zeros([yhat.shape[0], len(rationale_ratios)], dtype=np.float64)
@@ -159,7 +149,7 @@ def conduct_tests_(data, model, save_path):
                   
                     rationale_mask = create_rationale_mask_(
                         importance_scores = feat_score, 
-                        no_of_masked_tokens = torch.ceil(lengths.float() * rationale_length).detach().cpu().numpy(),
+                        no_of_masked_tokens = torch.ceil(lengths.float() * rationale_length).cpu().detach().cpu().numpy(),
                         method = rationale_type
                     )
 
@@ -189,8 +179,6 @@ def conduct_tests_(data, model, save_path):
                     suff_aopc[:,_i_] = suff
                     comp_aopc[:,_i_] = comp
 
-                    # import pdb; pdb.set_trace()
-                    
                 for _j_, annot_id in enumerate(index_list):
                     
                     faithfulness_results[annot_id][feat_name] = {
@@ -204,15 +192,29 @@ def conduct_tests_(data, model, save_path):
                         }
                     }
         
+                del feat_score
+                del rationale_mask
+                del suff
+                del comp
 
-            
-           
+                gc.collect()
+                torch.cuda.empty_cache()
+
+        del sentences
+        del original_sentences
+        del lengths
+        del yhat
+
+        gc.collect()
+
+        torch.cuda.empty_cache()
+
         pbar.update(data.batch_size)
 
             
     descriptor = {}
     # filling getting averages
-    for feat_attr in {"attention", "gradients", "ig", "random", "scaled attention", "attention gradients", "omission"}:
+    for feat_attr in {"attention", "gradients", "ig", "random", "scaled attention", "attention gradients"}:
         
         aopc_suff= np.asarray([faithfulness_results[k][feat_attr][f"sufficiency aopc"]["mean"] for k in faithfulness_results.keys()])
         aopc_comp = np.asarray([faithfulness_results[k][feat_attr][f"comprehensiveness aopc"]["mean"] for k in faithfulness_results.keys()])
@@ -229,12 +231,12 @@ def conduct_tests_(data, model, save_path):
         }
 
     ## save all info
-    fname = save_path + "faithfulness-scores-detailed-.npy"
+    fname = save_path + "-faithfulness-scores-detailed-.npy"
 
     np.save(fname, faithfulness_results)
 
     ## save descriptors
-    fname = save_path + "faithfulness-scores-averages--description.json"
+    fname = save_path + "-faithfulness-scores-averages--description.json"
 
     with open(fname, 'w') as file:
             json.dump(

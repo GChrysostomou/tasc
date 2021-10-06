@@ -2,6 +2,7 @@ import modules.experiments_bc.decision_single as eoo
 import modules.experiments_bc.decision_set as perc
 import modules.experiments_bc.set_tp as dmp
 import modules.experiments_bc.suff_comp as aopc
+from modules.experiments_bc.extract_importance import break_1_, break_2_, break_3_
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -22,6 +23,27 @@ class evaluate:
        
         self.save_dir = self.save_path + \
         self.encode_sel + "_" + self.mechanism_name
+
+    def _get_importance_scores_(self):
+        
+        ## attention, gradients, scaled attention, attention gradients
+        break_1_(
+            self.testing, 
+            self.classifier, 
+            save_path = self.save_dir
+        )
+        ##IG
+        break_2_(
+            self.testing, 
+            self.classifier, 
+            save_path = self.save_dir
+        )
+
+        # break_3_(
+        #     self.testing, 
+        #     self.classifier, 
+        #     save_path = self.save_dir
+        # )
 
     def decision_flip_single(self):
         

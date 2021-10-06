@@ -148,9 +148,7 @@ class Encoder(nn.Module):
 
             self.embed = self.embedding(input.long()) 
 
-            embed_ig = self.embed * ig
-
-            output = nn.Tanh()(self.average(embed_ig[:,:max(lengths),:]))
+            output = nn.Tanh()(self.average((self.embed * ig)[:,:max(lengths),:]))
             
             last_hidden = output.mean(1)
             
@@ -158,11 +156,7 @@ class Encoder(nn.Module):
             
             self.embed = self.embedding(input.long())
 
-            embed_ig = self.embed * ig
-            
-            seq_t = embed_ig.transpose(1,2)
-             
-            outputs = [self.convolutions[i](seq_t) for i in sorted(self.convolutions.keys())]
+            outputs = [self.convolutions[i]((self.embed * ig).transpose(1,2)) for i in sorted(self.convolutions.keys())]
             
             outputs = self.activation(torch.cat(outputs, dim = 1))
     
@@ -174,9 +168,7 @@ class Encoder(nn.Module):
             
             self.embed = self.embedding(input.long())
 
-            embed_ig = self.embed * ig
-   
-            packseq = nn.utils.rnn.pack_padded_sequence(embed_ig, lengths, batch_first=True, enforce_sorted = False)
+            packseq = nn.utils.rnn.pack_padded_sequence(self.embed * ig, lengths, batch_first=True, enforce_sorted = False)
             
             output, (h,c) = self.rnn(packseq)
 

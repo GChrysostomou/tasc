@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from torch.autograd import Variable
 import pandas as pd
 from modules.experiments_bc.eval_utils import * 
-from collections import OrderedDict
+from modules.utils import batch_from_dict_
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 from tqdm import trange
 import json
@@ -69,7 +69,7 @@ def register_flips_(model , ranking , original_prediction , original_sentences,
 
     return
 
-
+import os
 
 def percentage_removed(data, model, save_path):
     
@@ -86,16 +86,42 @@ def percentage_removed(data, model, save_path):
     
 
     flip_results = {}
-    
-    if args["encoder"] == "bert":
-        model.encoder.bert.embeddings.requires_grad_(True)
+
+    ## import importance_scores
+    fname = os.path.join(
+        os.getcwd(), 
+        "importance_scores", 
+        save_path.split('/')[-2],
+        ""
+    )
+
+    if os.path.exists(fname + f"{save_path.split('/')[-1]}-importance_scores.npy"):
+
+        print(f"** Importance scores already extracted in -->> {fname}")
+        
+        importance_scores = np.load(
+            fname + f"{save_path.split('/')[-1]}-importance_scores.npy",
+            allow_pickle = True
+        ).item()
 
     else:
-        model.encoder.embedding.weight.requires_grad_(True)
 
-    counter = 0
-    
-    for sentences, lengths, labels in data:
+        raise FileNotFoundError(
+            """
+            Please run the function to retrieve importance scores
+            """
+        )
+
+    ## check if descriptors already exist
+    fname = f"{save_path}_decision-flip-set-summary.json"
+
+    if os.path.exists(fname):
+
+        print("**** results already exist. Delete if you want a rerun")
+        return
+
+        
+    for inst_idx, sentences, lengths, labels in data:
         
         torch.cuda.empty_cache()
         model.zero_grad()
@@ -109,62 +135,12 @@ def percentage_removed(data, model, save_path):
             
             sentences, lengths, labels = Variable(sentences).to(device),Variable(lengths).to(device), Variable(labels).to(device)
 
-        index_list = []
-
-        for _i_ in range(sentences.size(0)):
+        for indx in inst_idx:
             
-            index = f"test-{counter}"
-
-            flip_results.update({index:{}})
-            
-            counter+=1
-            index_list.append(index)
-
-        # original trained model    
-        model.train()
-        
+            flip_results.update({indx:{}})
     
-        yhat, weights_or = model(sentences, lengths, retain_gradient = True)
+        yhat, _ = model(sentences, lengths, retain_gradient = True)
 
-        yhat.max(-1)[0].sum().backward(retain_graph = True)
-
-        g = model.encoder.embed.grad
-
-        em = model.encoder.embed
-
-        g1 = (g* em).sum(-1)[:,:max(lengths)]
-
-        integrated_grads = model.integrated_grads(
-            sentences, 
-            g, 
-            lengths, 
-            original_pred = yhat.max(-1)
-        )
-         
-
-        weights_def_grad = model.weights.grad
-        random = torch.randn(weights_or.shape)
-
-        g1.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))
-
-
-        omission_scores = model.get_omission_scores(
-            sentences, 
-            lengths, 
-            yhat
-        )
-
-        integrated_grads.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))
-
-        weight_mul_grad = weights_or * weights_def_grad
-        
-        weights_def_grad.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))      
-        
-        weight_mul_grad.masked_fill_(model.masks[:,:max(lengths)].bool(),float("-inf"))
-
-        maximum = max(lengths)
-        increments =  torch.round(maximum.float() * 0.02).int()
-        increments = max(1,increments)
                 
         maximum = max(lengths)
         
@@ -175,15 +151,33 @@ def percentage_removed(data, model, save_path):
         original_sentences = sentences.clone().detach()
 
         model.eval()
+
+        if args["speed_up"]:
+
+            increments =  torch.round(maximum.float() * 0.02).int()
+            increments = max(1,increments)
+
+            mirange = range(0,maximum+increments, increments)
+
+        else:
+
+            mirange = range(0, maximum)
+
         with torch.no_grad():
             
-            for feat_name, feat_score in {"random" : random, "attention" : weights_or, \
-                                        "gradients" : g1, "scaled attention" : weight_mul_grad, "ig": integrated_grads, \
-                                        "attention gradients" : weights_def_grad, "omission": omission_scores}.items():
+            for feat_name in {"random" , "attention","gradients" , "scaled attention", "ig",
+                            "attention gradients" }:
+
+                feat_score =  batch_from_dict_(
+                    inst_indx = inst_idx, 
+                    metadata = importance_scores, 
+                    target_key = feat_name,
+                )
+
 
                 feat_rank = torch.topk(feat_score, k = feat_score.size(1))[1].to(device)
 
-                for no_of_tokens in range(0,maximum+increments, increments):
+                for no_of_tokens in mirange:
 
                     register_flips_(
                         model = model, 
@@ -195,7 +189,7 @@ def percentage_removed(data, model, save_path):
                         no_of_tokens = no_of_tokens, 
                         feat_attr_name = feat_name,
                         lengths = lengths_ref,
-                        indexes= index_list
+                        indexes= inst_idx
                     )
 
 
@@ -207,7 +201,7 @@ def percentage_removed(data, model, save_path):
     ## it means we reached the max so fraction of is 1.
     for annot_id in flip_results.keys():
 
-        for feat_name in {"random", "attention", "gradients", "scaled attention", "ig", "attention gradients", "omission"}:
+        for feat_name in {"random", "attention", "gradients", "scaled attention", "ig", "attention gradients"}:
 
             if feat_name not in flip_results[annot_id]:
 
@@ -216,12 +210,25 @@ def percentage_removed(data, model, save_path):
     """Saving percentage decision flip"""
     
     df = pd.DataFrame.from_dict(flip_results).T
-    
 
-    df.to_csv(save_path + "_decision-flip-set.csv")
-    
+    df["instance_idx"] = df.index
+
+    with open(f"{save_path}_decision-flip-set.json", "w")as file:
+        
+        json.dump(
+            df.to_dict("records"),
+            file,
+            indent = 4
+        )
+        
     summary = df.mean(axis = 0)
 
-    summary.to_csv(save_path + "_decision-flip-set-summary.csv", header = ["mean percentage"])
+    with open(f"{save_path}_decision-flip-set-summary.json", "w")as file:
+        
+        json.dump(
+            summary.to_dict(),
+            file,
+            indent = 4
+        )
 
     return

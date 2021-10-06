@@ -92,9 +92,9 @@ class dataholder():
         # In[4]:
         
         
-        x_train, y_train = zip(*all_data.train)
-        x_dev, y_dev = zip(*all_data.dev)
-        x_test, y_test = zip(*all_data.test)
+        tr_idx, x_train, y_train = zip(*all_data.train)
+        dev_idx, x_dev, y_dev = zip(*all_data.dev)
+        test_idx, x_test, y_test = zip(*all_data.test)
         
         print("\nVocab size:", len(self.w2ix),
                 "\nTraining size:", len(y_train),
@@ -115,8 +115,6 @@ class dataholder():
         	self.sequence_length = 2200
         
         print("--Sequence length :", self.sequence_length, "\n")
-        
-        # In[10]:
         
         from modules.utils import padder
         
@@ -140,23 +138,22 @@ class dataholder():
         
         # In[12]:
         
+        training_prebatch = list(zip(tr_idx, x_train_pad, train_lengths, y_train))
+        dev_prebatch = list(zip(dev_idx, x_dev_pad, dev_lengths, y_dev))
+        testing_prebatch = list(zip(test_idx, x_test_pad, test_lengths, y_test))
         
-        training_prebatch = list(zip(x_train_pad, train_lengths, y_train))
-        dev_prebatch = list(zip(x_dev_pad, dev_lengths, y_dev))
-        testing_prebatch = list(zip(x_test_pad, test_lengths, y_test))
         
-        
-        training_prebatch = sorted(training_prebatch, key = lambda x : x[1], reverse = False)
-        dev_prebatch = sorted(dev_prebatch, key = lambda x : x[1], reverse = False)
-        testing_prebatch = sorted(testing_prebatch, key = lambda x : x[1], reverse = False)
+        training_prebatch = sorted(training_prebatch, key = lambda x : x[2], reverse = False)
+        dev_prebatch = sorted(dev_prebatch, key = lambda x : x[2], reverse = False)
+        testing_prebatch = sorted(testing_prebatch, key = lambda x : x[2], reverse = False)
         
         # In[13]:
         
         ### removing sos and eos only sentences
         
-        train_prebatch = [x for x in training_prebatch if x[1] > 2]
-        dev_prebatch = [x for x in dev_prebatch if x[1] > 2]
-        test_prebatch = [x for x in testing_prebatch if x[1] > 2]
+        train_prebatch = [x for x in training_prebatch if x[2] > 2]
+        dev_prebatch = [x for x in dev_prebatch if x[2] > 2]
+        test_prebatch = [x for x in testing_prebatch if x[2] > 2]
         
     
         self.training = DataLoader(train_prebatch, batch_size = self.batch_size, 
@@ -221,7 +218,8 @@ def mimic_halfer(x):
     return " ".join(revised).lower()
         
 from tqdm.auto import tqdm
-
+from transformers import AutoTokenizer
+       
 class dataholder_bert():
     
     def __init__(self, directory, dataset, B_SIZE  = 8, bert_model = "bert-base_uncased"):        
@@ -246,8 +244,6 @@ class dataholder_bert():
         
         print("\nOutput dimension: ", self.output_size, "\n")
         
-        from transformers import AutoTokenizer
-       
         pretrained_weights = bert_model
        
         if dataset == "mimicanemia": bert_max_length = 512
@@ -264,7 +260,6 @@ class dataholder_bert():
             # borrowed idea from Fine-tune BERT for Text Classification 
             all_data["text"] = all_data["text"].apply(lambda x: mimic_halfer(x))
         
-        # import pdb; pdb.set_trace();
         #remove sos and eos and replace unkn with bert symbols
         all_data["text"] = all_data["text"].apply(lambda x: bertify(x))
         # tokenize to maximum length the sequences and add the CLS token and ?SEP? at the enD??
@@ -292,22 +287,19 @@ class dataholder_bert():
         
         all_data["text_encoded"] = all_data["text"].apply(lambda x: bert_padder(x, bert_max_length))
 
-        train_prebatch = all_data[all_data.exp_split == "train"][["text_encoded", "lengths", "label"]].values.tolist()
-        dev_prebatch = all_data[all_data.exp_split == "dev"][["text_encoded", "lengths", "label"]].values.tolist()
-        test_prebatch = all_data[all_data.exp_split == "test"][["text_encoded", "lengths", "label"]].values.tolist()
+        train_prebatch = all_data[all_data.exp_split == "train"][["instance_idx", "text_encoded", "lengths", "label"]].values.tolist()
+        dev_prebatch = all_data[all_data.exp_split == "dev"][['instance_idx', "text_encoded", "lengths", "label"]].values.tolist()
+        test_prebatch = all_data[all_data.exp_split == "test"][['instance_idx', "text_encoded", "lengths", "label"]].values.tolist()
         
         # ### keep non zero sequences
-        
-        
-        train_prebatch = sorted(train_prebatch, key = lambda x : x[1], reverse = False)
-        dev_prebatch = sorted(dev_prebatch, key = lambda x: x[1], reverse = False)
-        test_prebatch = sorted(test_prebatch, key = lambda x: x[1], reverse = False)
+        train_prebatch = sorted(train_prebatch, key = lambda x : x[2], reverse = False)
+        dev_prebatch = sorted(dev_prebatch, key = lambda x: x[2], reverse = False)
+        test_prebatch = sorted(test_prebatch, key = lambda x: x[2], reverse = False)
         
         ### removing sos and eos only sentences
-        
-        train_prebatch = [x for x in train_prebatch if x[1] > 2]
-        dev_prebatch = [x for x in dev_prebatch if x[1] > 2]
-        test_prebatch = [x for x in test_prebatch if x[1] > 2]
+        train_prebatch = [x for x in train_prebatch if x[2] > 2]
+        dev_prebatch = [x for x in dev_prebatch if x[2] > 2]
+        test_prebatch = [x for x in test_prebatch if x[2] > 2]
         
 
 
@@ -343,17 +335,23 @@ def normalized_sufficiency_(model, original_sentences : torch.tensor, rationale_
     ## preserve sep
     rationale_mask[torch.arange(rationale_mask.size(0)).to(device), inputs["lengths"]-1] = 1
 
-    inputs["input"]  =  rationale_mask * original_sentences
+    inputs["input"]  =  rationale_mask[:,:max(inputs["lengths"])].long() * original_sentences
 
     yhat, _  = model(**inputs)
 
     yhat = torch.softmax(yhat.detach().cpu(), dim = -1).numpy()
 
-    reduced_probs = yhat[rows, full_text_class]
+    if type(rows) != np.ndarray:
+
+        reduced_probs = yhat[full_text_class]
+
+    else:
+
+        reduced_probs = yhat[rows, full_text_class]
 
     ## reduced input sufficiency
     suff_y_a = sufficiency_(full_text_probs, reduced_probs)
-
+    suff_y_a = np.nan_to_num(suff_y_a, nan=1.)
     # return suff_y_a
     suff_y_zero -= 1e-4 ## to avoid nan
 
@@ -376,14 +374,20 @@ def normalized_comprehensiveness_(model, original_sentences : torch.tensor, rati
     ## for comprehensivness we always remove the rationale and keep the rest of the input
     ## since ones represent rationale tokens, invert them and multiply the original input
     rationale_mask = (rationale_mask == 0).int()
-    
-    inputs["input"] =  original_sentences * rationale_mask.long()
+
+    inputs["input"] =  original_sentences * rationale_mask[:,:max(inputs["lengths"])].long()
     
     yhat, _  = model(**inputs)
 
     yhat = torch.softmax(yhat, dim = -1).detach().cpu().numpy()
 
-    reduced_probs = yhat[rows, full_text_class]
+    if type(rows) != np.ndarray:
+        
+        reduced_probs = yhat[full_text_class]
+
+    else:
+
+        reduced_probs = yhat[rows, full_text_class]
 
      ## reduced input sufficiency
     comp_y_a = comprehensiveness_(full_text_probs, reduced_probs)
@@ -457,3 +461,15 @@ def topk_(importance_scores, tokens_to_mask):
     top_k = torch.topk(importance_scores, tokens_to_mask).indices
 
     return top_k
+
+def batch_from_dict_(inst_indx, metadata, target_key = "attention"):
+
+    new_tensor = []
+
+    for _id_ in inst_indx:
+
+        new_tensor.append(
+            metadata[_id_][target_key]
+        )
+
+    return torch.tensor(new_tensor).to(device)

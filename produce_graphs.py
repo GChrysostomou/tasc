@@ -103,7 +103,7 @@ def capture_all_flip(results_dir = str, datasets = list(), encoders = list(), ta
                                 "method": tasc_mapper[tasc_],
                                 "mechanism": mechanism,
                                 "attention" : results[results["Unnamed: 0"] == "attention"]["True"].values[0],
-                                "random" :  results[results["Unnamed: 0"] == "random"]["True"].values[0],
+                                "random" :  results[results["Unnamed: 0"] == "random_source"]["True"].values[0],
                                 "gradOfatt" :  results[results["Unnamed: 0"] == "attention gradients"]["True"].values[0],
                                 "attention*gradients" :  results[results["Unnamed: 0"] == "scaled attention"]["True"].values[0]
                             }

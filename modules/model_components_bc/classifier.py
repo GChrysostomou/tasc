@@ -5,6 +5,8 @@ import json
 from torch.autograd import Variable
 from sklearn.metrics import *
 from tqdm import trange
+import gc
+import numpy as np
 
 with open('modules/config.txt', 'r') as f:
     args = json.load(f)
@@ -37,7 +39,7 @@ class Model(nn.Module):
 
     def forward(self, input, lengths, retain_gradient = False, ig = int(1)):
                 
-        self.hidden, last_hidden = self.encoder(input, lengths, ig = ig)
+        self.hidden, _ = self.encoder(input, lengths, ig = ig)
 
         if retain_gradient:
 
@@ -85,7 +87,7 @@ class Model(nn.Module):
         predominant_class = predicted.max(-1)[1]
         self.eval()
         for _j in range(input_pruned.size(1)):
-            torch.cuda.empty_cache()
+
             mask = torch.ones_like(input_pruned)
             mask[:,_j] = 0
 
@@ -105,17 +107,30 @@ class Model(nn.Module):
 
             omission_scores.append(predicted.max(-1)[0] - ommited)
 
+        del scores
+        del ommited
+        del self.weights
+        del self.encoder.embed
+
+        gc.collect()
+        torch.cuda.empty_cache()
+
         omission_scores = torch.stack(omission_scores).transpose(0,1)
 
         return omission_scores
 
-    def integrated_grads(self, original_input, original_grad, lengths, original_pred, steps = 20):
+    def integrated_grads(self, original_input, original_grad, lengths, original_pred, steps = 10):
 
-        grad_list = [original_grad]
+        grad_list = [original_grad.cpu().detach().numpy()]
         
         for x in torch.arange(start = 0.0, end = 1.0, step = (1.0-0.0)/steps):
             
-            pred, _ = self.forward(original_input, lengths, retain_gradient = True, ig = x)
+            pred, _ = self.forward(
+                original_input, 
+                lengths, 
+                retain_gradient = True, 
+                ig = x
+            )
             
             if len(pred.shape) == 1:
 
@@ -127,19 +142,25 @@ class Model(nn.Module):
 
                 baseline = pred[rows, original_pred[1]]
 
-            pred[rows, original_pred[1]].sum().backward()
+            pred[rows, original_pred[1]].sum().backward(retain_graph = True)
 
             g = self.encoder.embed.grad
 
-            grad_list.append(g)
+            grad_list.append(g.cpu().numpy())
 
-        attributions = torch.stack(grad_list).mean(0)
+            del g
+            del rows
 
-        em = self.encoder.embed
+            torch.cuda.empty_cache()
+
+        attributions = np.vstack(grad_list).mean(0)
+
+        em = self.encoder.embed.detach().cpu().numpy()
 
         ig = (attributions* em).sum(-1)[:,:max(lengths)]
         
-        self.approximation_error = torch.abs((attributions.sum() - (original_pred[0] - baseline).sum()) / pred.size(0))
+        del self.encoder.embed
+        torch.cuda.empty_cache()
 
         return ig
 
@@ -158,7 +179,7 @@ def train(model, training, development, loss_function, optimiser, run,epochs = 1
 
         model.train()
 
-        for sentences, lengths, labels in training:
+        for inst_idx, sentences, lengths, labels in training:
             
             model.zero_grad()
            
@@ -253,7 +274,7 @@ def test(model, loss_function, data):
     
     with torch.no_grad():
 
-        for sentences, lengths, labels in data:
+        for inst_idx, sentences, lengths, labels in data:
     
             if args["encoder"] == "bert":
             

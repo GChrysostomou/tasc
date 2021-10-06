@@ -1,14 +1,14 @@
 import torch
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from torch.autograd import Variable
 import pandas as pd
 from modules.experiments_bc.eval_utils import * 
 from tqdm import trange
 from modules.experiments_bc.decision_set import register_flips_
-
+import os
 import json
+from modules.utils import batch_from_dict_
 
 with open('modules/config.txt', 'r') as f:
     args = json.load(f)
@@ -31,15 +31,40 @@ def effect_on_output(data, model, save_path):
 
     flip_results = {}
     
-    if args["encoder"] == "bert":
-        model.encoder.bert.embeddings.requires_grad_(True)
+    ## import importance_scores
+    fname = os.path.join(
+        os.getcwd(), 
+        "importance_scores", 
+        save_path.split('/')[-2],
+        ""
+    )
+
+    if os.path.exists(fname + f"{save_path.split('/')[-1]}-importance_scores.npy"):
+
+        print(f"** Importance scores already extracted in -->> {fname}")
+        
+        importance_scores = np.load(
+            fname + f"{save_path.split('/')[-1]}-importance_scores.npy",
+            allow_pickle = True
+        ).item()
 
     else:
-        model.encoder.embedding.weight.requires_grad_(True)
 
-    counter = 0
+        raise FileNotFoundError(
+            """
+            Please run the function to retrieve importance scores
+            """
+        )
+
+    ## check if descriptors already exist
+    fname = f"{save_path}_decision-flip-single-summary.json"
+
+    if os.path.exists(fname):
+
+        print("**** results already exist. Delete if you want a rerun")
+        return
     
-    for sentences, lengths, labels in data:
+    for inst_idx, sentences, lengths, labels in data:
         
         torch.cuda.empty_cache()
         model.zero_grad()
@@ -53,60 +78,28 @@ def effect_on_output(data, model, save_path):
             
             sentences, lengths, labels = Variable(sentences).to(device),Variable(lengths).to(device), Variable(labels).to(device)
 
-        index_list = []
-
-        for _i_ in range(sentences.size(0)):
+        for indx in inst_idx:
             
-            index = f"test-{counter}"
-
-            flip_results.update({index:{}})
-            
-            counter+=1
-            index_list.append(index)
-
-        # original trained model    
-        model.train()
-        
-    
-        yhat, weights_or = model(sentences, lengths, retain_gradient = True)
-
-        yhat.max(-1)[0].sum().backward(retain_graph = True)
-
-        g = model.encoder.embed.grad
-
-        em = model.encoder.embed
-
-        g1 = (g* em).sum(-1)[:,:max(lengths)]
-
-        weights_def_grad = model.weights.grad
-        random = torch.randn(weights_or.shape)
-
-        g1.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))
-
-        weight_mul_grad = weights_or * weights_def_grad
-        
-        weights_def_grad.masked_fill_(model.masks[:,:max(lengths)].bool(), float("-inf"))      
-        
-        weight_mul_grad.masked_fill_(model.masks[:,:max(lengths)].bool(),float("-inf"))
-
-        maximum = max(lengths)
-        increments =  torch.round(maximum.float() * 0.02).int()
-        increments = max(1,increments)
+            flip_results.update({indx:{}})
                 
-        maximum = max(lengths)
-        
+        yhat, _ = model(sentences, lengths, retain_gradient = True)
+
         lengths_ref = lengths.clone()
         
         rows = torch.arange(sentences.size(0)).long().to(device)
 
         original_sentences = sentences.clone().detach()
 
-        model.eval()
         with torch.no_grad():
             
-            for feat_name, feat_score in {"random" : random, "attention" : weights_or, \
-                                        "gradients" : g1, "scaled attention" : weight_mul_grad, \
-                                        "attention gradients" : weights_def_grad}.items():
+            for feat_name in {"random" , "attention" , "gradients" , "scaled attention", 
+                                        "attention gradients" }:
+
+                feat_score =  batch_from_dict_(
+                    inst_indx = inst_idx, 
+                    metadata = importance_scores, 
+                    target_key = feat_name,
+                )
 
                 feat_rank = torch.topk(feat_score, k = feat_score.size(1))[1].to(device)
 
@@ -120,7 +113,7 @@ def effect_on_output(data, model, save_path):
                     no_of_tokens = 0, 
                     feat_attr_name = feat_name,
                     lengths = lengths_ref,
-                    indexes= index_list,
+                    indexes= inst_idx,
                     binary = True
                 )
 
@@ -139,14 +132,26 @@ def effect_on_output(data, model, save_path):
                 flip_results[annot_id][feat_name] = False
 
     """Saving percentage decision flip"""
-    
     df = pd.DataFrame.from_dict(flip_results).T
-    
-    df.to_csv(save_path + "_decision-flip-single.csv")
+    df["instance_idx"] = df.index
+
+    with open(f"{save_path}_decision-flip-single.json", "w")as file:
+        
+        json.dump(
+            df.to_dict("records"),
+            file,
+            indent = 4
+        )
     
     summary = df.mean(axis = 0) * 100
 
-    summary.to_csv(save_path + "_decision-flip-single-summary.csv", header = ["mean percentage"])
-    
+    with open(f"{save_path}_decision-flip-single-summary.json", "w")as file:
+        
+        json.dump(
+            summary.to_dict(),
+            file,
+            indent = 4
+        )
+
     return
 

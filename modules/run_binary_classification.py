@@ -349,10 +349,12 @@ def conduct_experiments(data):
         save_path = args["experiments_path"]
     )
     
+    evaluation._get_importance_scores_()
+
     evaluation.aopc_()
 
-    # evaluation.decision_flip_single()
+    evaluation.decision_flip_single()
         
-    # evaluation.decision_flip_set()
+    evaluation.decision_flip_set()
         
     torch.cuda.empty_cache()
