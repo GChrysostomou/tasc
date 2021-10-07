@@ -335,6 +335,10 @@ def normalized_sufficiency_(model, original_sentences : torch.tensor, rationale_
     ## preserve sep
     rationale_mask[torch.arange(rationale_mask.size(0)).to(device), inputs["lengths"]-1] = 1
 
+    if model.encoder.encode_sel  == "bert":
+
+        inputs["lengths"] = torch.where(inputs["input"] == 102)[1].to(device) + 1
+
     inputs["input"]  =  rationale_mask[:,:max(inputs["lengths"])].long() * original_sentences
 
     yhat, _  = model(**inputs)
@@ -374,6 +378,10 @@ def normalized_comprehensiveness_(model, original_sentences : torch.tensor, rati
     ## for comprehensivness we always remove the rationale and keep the rest of the input
     ## since ones represent rationale tokens, invert them and multiply the original input
     rationale_mask = (rationale_mask == 0).int()
+
+    if model.encoder.encode_sel  == "bert":
+
+        inputs["lengths"] = torch.where(inputs["input"] == 102)[1].to(device) + 1
 
     inputs["input"] =  original_sentences * rationale_mask[:,:max(inputs["lengths"])].long()
     

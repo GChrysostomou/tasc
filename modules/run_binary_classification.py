@@ -147,7 +147,7 @@ def train_binary_classification_model(data):
             print("Total Trainable Params:", total_trainable_params)
             assert (total_params - total_trainable_params) == model.encoder.embedding.weight.numel()
     
-        save_folder = args["save_path"] + args["encoder"] + "_" + args["mechanism"] + str(number) + ".model"
+        save_folder = args["save_path"] + args["encoder"] + "_" + args["mechanism"] + str(number) + ".pt"
   
         dev_results, results_to_save = train(model,  
               data.training, 
@@ -181,7 +181,7 @@ def evaluate_trained_bc_model(data):
     and produces statistics    
     """
     
-    saved_models = glob.glob(args["save_path"] + "*.model")
+    saved_models = glob.glob(args["save_path"] + "*.pt")
     
     stats_report = {}
  
@@ -223,7 +223,7 @@ def evaluate_trained_bc_model(data):
         model.to(device)
         
         
-        current_model = args["save_path"] + args["encoder"] + "_" + args["mechanism"] + str(j) + ".model"
+        current_model = args["save_path"] + args["encoder"] + "_" + args["mechanism"] + str(j) + ".pt"
        
         index_model = saved_models.index(current_model)
         
@@ -266,7 +266,7 @@ def evaluate_trained_bc_model(data):
     
     for item in models_to_get_ridoff:
         
-        os.remove(args["save_path"] + args["encoder"] + "_" + args["mechanism"]  + str(item) + ".model")
+        os.remove(args["save_path"] + args["encoder"] + "_" + args["mechanism"]  + str(item) + ".pt")
     
     """
     saving the stats
@@ -288,11 +288,11 @@ def conduct_experiments(data):
     and produces statistics    
     """
     
-    saved_models = glob.glob(args["save_path"] + "*.model")
+    saved_models = glob.glob(args["save_path"] + "*.pt")
     
     no_number_models = [x.lower() for x in saved_models]
 
-    no_number_models = [(x.split(".model")[0][:-1] + ".model") for x in saved_models if ".model" in x]
+    no_number_models = [(x.split(".pt")[0][:-1] + ".pt") for x in saved_models if ".pt" in x]
     
     stats_report = {}
  
@@ -332,7 +332,7 @@ def conduct_experiments(data):
     model.to(device)
     
     
-    current_model = args["save_path"] + args["encoder"] + "_" + args["mechanism"] + ".model"
+    current_model = args["save_path"] + args["encoder"] + "_" + args["mechanism"] + ".pt"
    
     index_model = no_number_models.index(current_model)
     

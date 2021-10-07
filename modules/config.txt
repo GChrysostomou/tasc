@@ -1,1 +1,28 @@
-{"dataset": "imdb", "encoder": "mlp", "data_dir": "data/", "model_dir": "dev_test_models/", "experiments_dir": "faithfulness/", "mechanism": "tanh", "operation": "sum-over", "lin": true, "feat": false, "conv": false, "speed_up": false, "bert_model": "bert-base-uncased", "vocab_size": 12147, "embedding_dim": 300, "hidden_dim": 64, "tasc": "lin", "seeds": [24, 92, 7], "optimiser": "Adam", "loss": "CrossEntropyLoss", "epochs": 20, "save_path": "dev_test_models/lin_imdb/", "experiments_path": "faithfulness/lin_imdb/"}
+{
+    "dataset": "sst",
+    "encoder": "bert",
+    "data_dir": "data/",
+    "model_dir": "dev_test_models/",
+    "experiments_dir": "faithfulness/",
+    "mechanism": "dot",
+    "operation": "sum-over",
+    "lin": false,
+    "feat": false,
+    "conv": false,
+    "speed_up": true,
+    "bert_model": "bert-base-uncased",
+    "vocab_size": 30522,
+    "embedding_dim": 768,
+    "hidden_dim": 384,
+    "tasc": null,
+    "seeds": [
+        24,
+        92,
+        7
+    ],
+    "optimiser": "Adam",
+    "loss": "CrossEntropyLoss",
+    "epochs": 10,
+    "save_path": "dev_test_models/sst/",
+    "experiments_path": "faithfulness/sst/"
+}

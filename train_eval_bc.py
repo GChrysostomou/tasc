@@ -47,7 +47,7 @@ encode_select = args["encoder"]
 data_dir= args["data_dir"]
 model_dir = args["model_dir"] 
 sys.path.append(data_dir)
-method = [k for k,v in args.items() if v is True]
+method = [k for k,v in args.items() if (v is True and "speed_up" not in k)]
 save_path = [model_dir + method[0] + "_" + dataset + "/" if len(method) > 0 else model_dir + dataset + "/"][0]
 
 experiments_path = [args["experiments_dir"] + method[0] + "_" + dataset + "/" if len(method) > 0 else args["experiments_dir"] + dataset + "/"][0]
@@ -91,7 +91,7 @@ embedding_dim = data.embedding_dim
 hidden_dim = data.hidden_dim
 
 
-tasc_method = method[0] if len(method) > 0 else None
+tasc_method = method[0] if (len(method) > 0 and "speed_up" not in method) else None
 hidden_dim = 64 if args["encoder"] != "bert" else 768 // 2
 embedding_dim = 300 if args["encoder"] != "bert" else 768
 epochs = 20 if args["encoder"] != "bert" else 10 
@@ -115,8 +115,13 @@ print(args)
 #### saving config file for this run
 
 with open('modules/config.txt', 'w') as file:
-     file.write(json.dumps(args))
-     
+    
+    json.dump(
+        args,
+        file,
+        indent = 4
+    )
+   
 
 ### training and evaluating models
 
